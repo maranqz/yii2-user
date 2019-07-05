@@ -15,15 +15,19 @@ use dektrium\user\Finder;
 use dektrium\user\models\Profile;
 use dektrium\user\models\SessionHistorySearch;
 use dektrium\user\models\SettingsForm;
+use dektrium\user\models\TwoFactorEditForm;
 use dektrium\user\models\User;
 use dektrium\user\Module;
 use dektrium\user\traits\AjaxValidationTrait;
 use dektrium\user\traits\EventTrait;
+use yii\base\ExitException;
+use yii\base\InvalidConfigException;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
+use yii\web\Response;
 
 /**
  * SettingsController manages updating user settings (e.g. profile, email and password).
@@ -97,6 +101,30 @@ class SettingsController extends Controller
      */
     const EVENT_AFTER_DELETE = 'afterDelete';
 
+    /**
+     * Event is triggered before update user's 'tow factor authentication'.
+     * Triggered with \dektrium\user\events\FormEvent.
+     */
+    const EVENT_BEFORE_TWO_FACTOR = 'beforeTwoFactor';
+
+    /**
+     * Event is triggered after update user's 'tow factor authentication'.
+     * Triggered with \dektrium\user\events\FormEvent.
+     */
+    const EVENT_AFTER_TWO_FACTOR = 'afterTwoFactor';
+
+    /**
+     * Event is triggered before regenerate tfa recovery codes of user.
+     * Triggered with \dektrium\user\events\FormEvent.
+     */
+    const EVENT_BEFORE_REGENERATE_TFA_RECOVERY_CODES = 'beforeTwoFactor';
+
+    /**
+     * Event is triggered after regenerate tfa recovery codes of user.
+     * Triggered with \dektrium\user\events\FormEvent.
+     */
+    const EVENT_AFTER_REGENERATE_TFA_RECOVERY_CODES = 'afterTwoFactor';
+
     /** @inheritdoc */
     public $defaultAction = 'profile';
 
@@ -124,6 +152,7 @@ class SettingsController extends Controller
                 'actions' => [
                     'disconnect' => ['post'],
                     'delete'     => ['post'],
+                    'two-factor-regenerate-recovery-codes' => ['post'],
                 ],
             ],
             'access' => [
@@ -131,7 +160,16 @@ class SettingsController extends Controller
                 'rules' => [
                     [
                         'allow'   => true,
-                        'actions' => ['profile', 'account', 'networks', 'disconnect', 'delete', 'session-history'],
+                        'actions' => [
+                            'profile',
+                            'account',
+                            'networks',
+                            'disconnect',
+                            'delete',
+                            'session-history',
+                            'two-factor',
+                            'two-factor-regenerate-recovery-codes',
+                        ],
                         'roles'   => ['@'],
                     ],
                     [
@@ -309,5 +347,69 @@ class SettingsController extends Controller
             'searchModel' => $searchModel,
             'dataProvider' => $dataProvider,
         ]);
+    }
+
+    /**
+     * Enable/disable two factor authentication for user
+     *
+     * @return string|Response
+     * @throws NotFoundHttpException
+     * @throws ExitException
+     * @throws InvalidConfigException
+     */
+    public function actionTwoFactor()
+    {
+        if (!$this->module->enableTwoFactorAuthentication) {
+            throw new NotFoundHttpException(\Yii::t('user', 'Not found'));
+        }
+
+        /** @var SettingsForm $model */
+        $model = \Yii::createObject(TwoFactorEditForm::className());
+        $event = $this->getFormEvent($model);
+
+        $this->performAjaxValidation($model);
+
+        $this->trigger(self::EVENT_BEFORE_TWO_FACTOR, $event);
+        if ($model->load(\Yii::$app->request->post()) && $model->save()) {
+            \Yii::$app->session->setFlash('success', \Yii::t('user', 'Your two factor authentication settings have been updated'));
+            $this->trigger(self::EVENT_AFTER_TWO_FACTOR, $event);
+            return $this->refresh();
+        }
+
+        return $this->render('two-factor', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Regenerate two factor recovery codes
+     *
+     * @return Response
+     * @throws InvalidConfigException
+     * @throws NotFoundHttpException
+     */
+    public function actionTwoFactorRegenerateRecoveryCodes()
+    {
+        /** @var User $user */
+        $user = \Yii::$app->user->identity;
+        if (!$this->module->enableTwoFactorAuthentication || !$user->hasTFA) {
+            throw new NotFoundHttpException(\Yii::t('user', 'Not found'));
+        }
+
+        $model = \Yii::createObject(TwoFactorEditForm::className());
+        $event = $this->getFormEvent($model);
+
+        $this->trigger(self::EVENT_BEFORE_TWO_FACTOR, $event);
+        if ($model->regenerateRecoveryCods()) {
+            \Yii::$app->session->setFlash(
+                'success',
+                \Yii::t('user', 'Recovery codes for two factor authentication have been regenerated')
+            );
+            $this->trigger(self::EVENT_AFTER_TWO_FACTOR, $event);
+        } else {
+            \Yii::$app->session->setFlash('error', \Yii::t('user', 'An error occurred processing your request'));
+        }
+
+        return $this->goBack(['/user/settings/two-factor']);
     }
 }
