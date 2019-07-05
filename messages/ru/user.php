@@ -218,5 +218,8 @@ return array (
   'You have {0} recovery keys left' => 'У вас осталось ключей восстановления: {0}',
   'Your two factor authentication settings have been updated' => 'Параметры двухфакторной аутентификации были обновлены',
   'Recovery codes for two factor authentication have been regenerated' => 'Перегенерированы коды восстановления для двухфакторной аутентификации',
-  'Enter a one-time password from the app or recovery code' => 'Введите одноразовый пароль из приложения или код восстановления'
+  'Enter code from the {0} or recovery code' => 'Введите код из {0} или код восстановления',
+  'tfa_application' => 'Google authentication',
+  'tfa_application_link' => 'https://support.google.com/accounts/answer/1066447?co=GENIE.Platform%3DAndroid',
+  'Two-factor authentication' => 'Двухфакторная аутентификация',
 );

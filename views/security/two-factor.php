@@ -18,7 +18,7 @@ use yii\widgets\ActiveForm;
  * @var dektrium\user\Module $module
  */
 
-$this->title = Yii::t('user', 'Sign in');
+$this->title = Yii::t('user', 'Two-factor authentication');
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 
@@ -39,7 +39,19 @@ $this->params['breadcrumbs'][] = $this->title;
                     'validateOnChange' => false,
                 ]) ?>
 
-                <?= Yii::t('user', 'Enter a one-time password from the app or recovery code') ?>
+                <?= Yii::t(
+                    'user',
+                    'Enter code from the {0} or recovery code',
+                    [
+                        Html::a(
+                            Yii::t('user', 'tfa_application'),
+                            Yii::t('user', 'tfa_application_link'),
+                            [
+                                'target' => '_blank',
+                            ]
+                        )
+                    ]
+                ) ?>
                 <?= $form->field($model, 'code',
                     [
                         'inputOptions' => [
@@ -51,7 +63,6 @@ $this->params['breadcrumbs'][] = $this->title;
                     ]
                 )->label(false);
                 ?>
-
 
                 <?= Html::submitButton(
                     Yii::t('user', 'Sign in'),

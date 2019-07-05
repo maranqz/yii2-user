@@ -92,7 +92,13 @@ $this->params['breadcrumbs'][] = $this->title;
                                     'user',
                                     'Install {0} or another two-factor authentication application (TOTP, 2FA)',
                                     [
-                                        Html::a(Yii::t('user', 'Google Authenticator'))
+                                        Html::a(
+                                            Yii::t('user', 'tfa_application'),
+                                            Yii::t('user', 'tfa_application_link'),
+                                            [
+                                                'target' => '_blank',
+                                            ]
+                                        )
                                     ]
                                 ) ?>
                             </li>
@@ -130,5 +136,4 @@ $this->params['breadcrumbs'][] = $this->title;
             <?php ActiveForm::end(); ?>
         </div>
     </div>
-</div>
 </div>
